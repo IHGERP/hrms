@@ -15,16 +15,6 @@ frappe.ui.form.on('Payroll Entry', {
 		erpnext.accounts.dimensions.setup_dimension_filters(frm, frm.doctype);
 		frm.events.department_filters(frm);
 		frm.events.payroll_payable_account_filters(frm);
-
-		frappe.realtime.off("completed_salary_slip_creation");
-		frappe.realtime.on("completed_salary_slip_creation", function() {
-			frm.reload_doc();
-		});
-
-		frappe.realtime.off("completed_salary_slip_submission");
-		frappe.realtime.on("completed_salary_slip_submission", function() {
-			frm.reload_doc();
-		});
 	},
 
 	department_filters: function (frm) {
@@ -50,53 +40,29 @@ frappe.ui.form.on('Payroll Entry', {
 	},
 
 	refresh: function (frm) {
-		if (frm.doc.docstatus === 0 && !frm.is_new()) {
-			frm.page.clear_primary_action();
-			frm.add_custom_button(__("Get Employees"),
-				function() {
-					frm.events.get_employee_details(frm);
-				}
-			).toggleClass("btn-primary", !(frm.doc.employees || []).length);
-		}
-
-		if (
-			(frm.doc.employees || []).length
-			&& !frappe.model.has_workflow(frm.doctype)
-			&& !cint(frm.doc.salary_slips_created)
-			&& (frm.doc.docstatus != 2)
-		) {
-			if (frm.doc.docstatus == 0 && !frm.is_new()) {
+		if (frm.doc.docstatus == 0) {
+			if (!frm.is_new()) {
 				frm.page.clear_primary_action();
-				frm.page.set_primary_action(__("Create Salary Slips"), () => {
-					frm.save("Submit").then(() => {
+				frm.add_custom_button(__("Get Employees"),
+					function () {
+						frm.events.get_employee_details(frm);
+					}
+				).toggleClass('btn-primary', !(frm.doc.employees || []).length);
+			}
+			if ((frm.doc.employees || []).length && !frappe.model.has_workflow(frm.doctype)) {
+				frm.page.clear_primary_action();
+				frm.page.set_primary_action(__('Create Salary Slips'), () => {
+					frm.save('Submit').then(() => {
 						frm.page.clear_primary_action();
 						frm.refresh();
+						frm.events.refresh(frm);
 					});
 				});
-			} else if (frm.doc.docstatus == 1 && frm.doc.status == "Failed") {
-				frm.add_custom_button(__("Create Salary Slips"), function () {
-					frm.call("create_salary_slips");
-				}).addClass("btn-primary");
 			}
 		}
-
 		if (frm.doc.docstatus == 1) {
 			if (frm.custom_buttons) frm.clear_custom_buttons();
 			frm.events.add_context_buttons(frm);
-		}
-
-		if (frm.doc.status == "Failed" && frm.doc.error_message) {
-			const issue = `<a id="jump_to_error" style="text-decoration: underline;">issue</a>`;
-			let process = (cint(frm.doc.salary_slips_created)) ? "submission" : "creation";
-
-			frm.dashboard.set_headline(
-				__("Salary Slip {0} failed. You can resolve the {1} and retry {0}.", [process, issue])
-			);
-
-			$("#jump_to_error").on("click", (e) => {
-				e.preventDefault();
-				frm.scroll_to_field("error_message");
-			});
 		}
 	},
 
@@ -113,7 +79,6 @@ frappe.ui.form.on('Payroll Entry', {
 				if (r.docs[0].validate_attendance) {
 					render_employee_attendance(frm, r.message);
 				}
-				frm.scroll_to_field("employees");
 			}
 		});
 	},
@@ -122,33 +87,33 @@ frappe.ui.form.on('Payroll Entry', {
 		frm.call({
 			doc: frm.doc,
 			method: "create_salary_slips",
+			callback: function () {
+				frm.refresh();
+				frm.toolbar.refresh();
+			}
 		});
 	},
 
 	add_context_buttons: function (frm) {
 		if (frm.doc.salary_slips_submitted || (frm.doc.__onload && frm.doc.__onload.submitted_ss)) {
 			frm.events.add_bank_entry_button(frm);
-		} else if (frm.doc.salary_slips_created && frm.doc.status !== "Queued") {
-			frm.add_custom_button(__("Submit Salary Slip"), function() {
+		} else if (frm.doc.salary_slips_created) {
+			frm.add_custom_button(__("Submit Salary Slip"), function () {
 				submit_salary_slip(frm);
-			}).addClass("btn-primary");
-		} else if (!frm.doc.salary_slips_created && frm.doc.status === "Failed") {
-			frm.add_custom_button(__("Create Salary Slips"), function() {
-				frm.trigger("create_salary_slips");
 			}).addClass("btn-primary");
 		}
 	},
 
 	add_bank_entry_button: function (frm) {
 		frappe.call({
-			method: 'hrms.payroll.doctype.payroll_entry.payroll_entry.payroll_entry_has_bank_entries',
+			method: 'ihgind_custom.overrides.ihg_payroll_entry.payroll_entry_has_bank_entries',
+			//  'hrms.payroll.doctype.payroll_entry.payroll_entry.payroll_entry_has_bank_entries',
 			args: {
-				'name': frm.doc.name,
-				'payroll_payable_account': frm.doc.payroll_payable_account
+				'name': frm.doc.name
 			},
 			callback: function (r) {
 				if (r.message && !r.message.submitted) {
-					frm.add_custom_button(__("Make Bank Entry"), function () {
+					frm.add_custom_button("Make Bank Entry", function () {
 						make_bank_entry(frm);
 					}).addClass("btn-primary");
 				}
@@ -200,9 +165,10 @@ frappe.ui.form.on('Payroll Entry', {
 
 	get_employee_filters: function (frm) {
 		let filters = {};
+		filters['salary_slip_based_on_timesheet'] = frm.doc.salary_slip_based_on_timesheet;
 
 		let fields = ['company', 'start_date', 'end_date', 'payroll_frequency', 'payroll_payable_account',
-			'currency', 'department', 'branch', 'designation', 'salary_slip_based_on_timesheet'];
+			'currency', 'department', 'branch', 'designation'];
 
 		fields.forEach(field => {
 			if (frm.doc[field]) {
@@ -298,13 +264,13 @@ frappe.ui.form.on('Payroll Entry', {
 
 	salary_slip_based_on_timesheet: function (frm) {
 		frm.toggle_reqd(['payroll_frequency'], !frm.doc.salary_slip_based_on_timesheet);
-		hrms.set_payroll_frequency_to_null(frm);
 	},
 
 	set_start_end_dates: function (frm) {
 		if (!frm.doc.salary_slip_based_on_timesheet) {
 			frappe.call({
-				method: 'hrms.payroll.doctype.payroll_entry.payroll_entry.get_start_end_dates',
+				method: 'ihgind_custom.overrides.ihg_payroll_entry.get_start_end_dates',
+				// 'hrms.payroll.doctype.payroll_entry.payroll_entry.get_start_end_dates',
 				args: {
 					payroll_frequency: frm.doc.payroll_frequency,
 					start_date: frm.doc.posting_date
@@ -322,7 +288,8 @@ frappe.ui.form.on('Payroll Entry', {
 
 	set_end_date: function (frm) {
 		frappe.call({
-			method: 'hrms.payroll.doctype.payroll_entry.payroll_entry.get_end_date',
+			method: 'ihgind_custom.overrides.ihg_payroll_entry.get_end_date',
+			// 'hrms.payroll.doctype.payroll_entry.payroll_entry.get_end_date',
 			args: {
 				frequency: frm.doc.payroll_frequency,
 				start_date: frm.doc.start_date
@@ -338,7 +305,7 @@ frappe.ui.form.on('Payroll Entry', {
 	validate_attendance: function (frm) {
 		if (frm.doc.validate_attendance && frm.doc.employees) {
 			frappe.call({
-				method: 'get_employees_with_unmarked_attendance',
+				method: 'validate_employee_attendance',
 				args: {},
 				callback: function (r) {
 					render_employee_attendance(frm, r.message);
@@ -366,6 +333,9 @@ const submit_salary_slip = function (frm) {
 			frappe.call({
 				method: 'submit_salary_slips',
 				args: {},
+				callback: function () {
+					frm.events.refresh(frm);
+				},
 				doc: frm.doc,
 				freeze: true,
 				freeze_message: __('Submitting Salary Slips and creating Journal Entry...')
@@ -374,6 +344,7 @@ const submit_salary_slip = function (frm) {
 		function () {
 			if (frappe.dom.freeze_count) {
 				frappe.dom.unfreeze();
+				frm.events.refresh(frm);
 			}
 		}
 	);
@@ -403,7 +374,7 @@ let make_bank_entry = function (frm) {
 
 let render_employee_attendance = function (frm, data) {
 	frm.fields_dict.attendance_detail_html.html(
-		frappe.render_template('employees_with_unmarked_attendance', {
+		frappe.render_template('employees_to_mark_attendance', {
 			data: data
 		})
 	);
