@@ -16,6 +16,7 @@
   "designation",
   "company",
   "section_break_4",
+  "job_offer_term_template",
   "offer_terms",
   "section_break_14",
   "select_terms",
@@ -31,6 +32,7 @@
    "fieldname": "job_applicant",
    "fieldtype": "Link",
    "label": "Job Applicant",
+   "link_filters": "[[\"Job Applicant\",\"status\",\"!=\",\"Rejected\"]]",
    "options": "Job Applicant",
    "print_hide": 1,
    "reqd": 1
@@ -156,11 +158,17 @@
    "options": "Job Offer",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "job_offer_term_template",
+   "fieldtype": "Link",
+   "label": "Job Offer Term Template",
+   "options": "Job Offer Term Template"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2020-06-25 00:56:24.756395",
+ "modified": "2025-07-28 16:29:10.149418",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Job Offer",

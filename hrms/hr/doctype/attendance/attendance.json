@@ -122,7 +122,8 @@
    "label": "Attendance Date",
    "oldfieldname": "attendance_date",
    "oldfieldtype": "Date",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "employee.company",
@@ -207,7 +208,7 @@
  "idx": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-06-15 20:09:21.730465",
+ "modified": "2025-01-31 11:45:54.846562",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Attendance",
@@ -254,6 +255,16 @@
    "share": 1,
    "submit": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "select": 1,
+   "share": 1
   }
  ],
  "search_fields": "employee,employee_name,attendance_date,status",

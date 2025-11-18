@@ -4,7 +4,7 @@ app_publisher = "Frappe Technologies Pvt. Ltd."
 app_description = "Modern HR and Payroll Software"
 app_email = "contact@frappe.io"
 app_license = "GNU General Public License (v3)"
-required_apps = ["IHGERP/erpnext"]
+required_apps = ["frappe/erpnext"]
 
 
 # Includes in <head>
@@ -110,9 +110,7 @@ before_uninstall = "hrms.uninstall.before_uninstall"
 # 	"Event": "frappe.desk.doctype.event.event.has_permission",
 # }
 
-has_upload_permission = {
-	"Employee": "erpnext.setup.doctype.employee.employee.has_upload_permission"
-}
+has_upload_permission = {"Employee": "erpnext.setup.doctype.employee.employee.has_upload_permission"}
 
 # DocType Class
 # ---------------
@@ -140,6 +138,7 @@ doc_events = {
 			"hrms.overrides.company.make_company_fixtures",
 			"hrms.overrides.company.set_default_hr_accounts",
 		],
+		"on_trash": "hrms.overrides.company.handle_linked_docs",
 	},
 	"Timesheet": {"validate": "hrms.hr.utils.validate_active_employee"},
 	"Payment Entry": {
@@ -167,9 +166,7 @@ doc_events = {
 		"after_insert": "hrms.overrides.employee_master.update_job_applicant_and_offer",
 		"on_trash": "hrms.overrides.employee_master.update_employee_transfer",
 	},
-	"Project": {
-		"validate": "hrms.controllers.employee_boarding_controller.update_employee_boarding_status"
-	},
+	"Project": {"validate": "hrms.controllers.employee_boarding_controller.update_employee_boarding_status"},
 	"Task": {"on_update": "hrms.controllers.employee_boarding_controller.update_task"},
 }
 
@@ -231,6 +228,7 @@ regional_overrides = {
 	"India": {
 		"hrms.hr.utils.calculate_annual_eligible_hra_exemption": "hrms.regional.india.utils.calculate_annual_eligible_hra_exemption",
 		"hrms.hr.utils.calculate_hra_exemption_for_period": "hrms.regional.india.utils.calculate_hra_exemption_for_period",
+		"hrms.hr.utils.calculate_tax_with_marginal_relief": "hrms.regional.india.utils.calculate_tax_with_marginal_relief",
 	},
 }
 
@@ -262,6 +260,7 @@ override_doctype_dashboards = {
 	"Task": "hrms.overrides.dashboard_overrides.get_dashboard_for_project",
 	"Project": "hrms.overrides.dashboard_overrides.get_dashboard_for_project",
 	"Timesheet": "hrms.overrides.dashboard_overrides.get_dashboard_for_timesheet",
+	"Bank Account": "hrms.overrides.dashboard_overrides.get_dashboard_for_bank_account",
 }
 
 # exempt linked doctypes from being automatically cancelled
@@ -307,3 +306,15 @@ override_doctype_dashboards = {
 # Recommended only for DocTypes which have limited documents with untranslated names
 # For example: Role, Gender, etc.
 # translated_search_doctypes = []
+
+company_data_to_be_ignored = [
+	"Salary Component Account",
+	"Salary Structure",
+	"Salary Structure Assignment",
+	"Payroll Period",
+	"Income Tax Slab",
+	"Leave Period",
+	"Leave Policy Assignment",
+	"Employee Onboarding Template",
+	"Employee Separation Template",
+]

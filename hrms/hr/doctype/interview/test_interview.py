@@ -12,7 +12,10 @@ from frappe.utils import add_days, get_time, getdate, nowtime
 
 from erpnext.setup.doctype.designation.test_designation import create_designation
 
-from hrms.hr.doctype.interview.interview import DuplicateInterviewRoundError
+from hrms.hr.doctype.interview.interview import (
+	DuplicateInterviewRoundError,
+	update_job_applicant_status,
+)
 from hrms.hr.doctype.job_applicant.job_applicant import get_interview_details
 from hrms.tests.test_utils import create_job_applicant
 
@@ -59,7 +62,7 @@ class TestInterview(FrappeTestCase):
 		job_applicant = create_job_applicant()
 		scheduled_on = datetime.datetime.now() + datetime.timedelta(minutes=10)
 
-		interview = create_interview_and_dependencies(job_applicant.name, scheduled_on=scheduled_on)
+		create_interview_and_dependencies(job_applicant.name, scheduled_on=scheduled_on)
 
 		frappe.db.delete("Email Queue")
 
@@ -78,7 +81,7 @@ class TestInterview(FrappeTestCase):
 
 		job_applicant = create_job_applicant()
 		scheduled_on = add_days(getdate(), -4)
-		interview = create_interview_and_dependencies(
+		create_interview_and_dependencies(
 			job_applicant.name, scheduled_on=scheduled_on, status="Under Review"
 		)
 
@@ -108,6 +111,15 @@ class TestInterview(FrappeTestCase):
 				"status": "Pending",
 			},
 		)
+
+	def test_job_applicant_status_update_on_interview_submit(self):
+		job_applicant = create_job_applicant()
+		create_interview_and_dependencies(job_applicant.name, status="Cleared")
+
+		update_job_applicant_status({"job_applicant": job_applicant.name, "status": "Accepted"})
+		job_applicant.reload()
+
+		self.assertEqual(job_applicant.status, "Accepted")
 
 	def tearDown(self):
 		frappe.db.rollback()
@@ -151,7 +163,10 @@ def create_interview_and_dependencies(
 	return interview
 
 
-def create_interview_round(name, skill_set, interviewers=[], designation=None, save=True):
+def create_interview_round(name, skill_set, interviewers=None, designation=None, save=True):
+	if not interviewers:
+		interviewers = []
+
 	create_skill_set(skill_set)
 	interview_round = frappe.new_doc("Interview Round")
 	interview_round.round_name = name
