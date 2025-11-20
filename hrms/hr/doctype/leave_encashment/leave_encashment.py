@@ -121,9 +121,7 @@ class LeaveEncashment(Document):
 		per_day_encashment = frappe.db.get_value(
 			"Salary Structure", salary_structure, "leave_encashment_amount_per_day"
 		)
-		self.encashment_amount = (
-			self.encashable_days * per_day_encashment if per_day_encashment > 0 else 0
-		)
+		self.encashment_amount = self.encashable_days * per_day_encashment if per_day_encashment > 0 else 0
 
 		self.leave_allocation = allocation.name
 		return True
@@ -166,7 +164,9 @@ class LeaveEncashment(Document):
 			return
 
 		to_date = leave_allocation.get("to_date")
-		if to_date < getdate(nowdate()):
+
+		can_expire = not frappe.db.get_value("Leave Type", self.leave_type, "is_carry_forward")
+		if to_date < getdate() and can_expire:
 			args = frappe._dict(
 				leaves=self.encashable_days, from_date=to_date, to_date=to_date, is_carry_forward=0
 			)
